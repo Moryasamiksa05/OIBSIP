@@ -1,72 +1,80 @@
-import speech_recognition as sr
-import datetime
-import wikipedia
-import os
-import smtplib
-import distutils
-from email.message import EmailMessage
+import tkinter as tk
+from tkinter import messagebox
+import matplotlib.pyplot as plt
+import csv
 
-# Initialize the speech recognition engine
-r = sr.Recognizer()
+def calculate_bmi(weight, height):
+    bmi = weight / (height ** 2)
+    return bmi
 
-# Function to send an email
-def send_email(subject, message, from_addr, to_addr, password):
-    msg = EmailMessage()
-    msg.set_content(message)
-    msg['subject'] = subject
-    msg['from'] = from_addr
-    msg['to'] = to_addr
-
-    server = smtplib.SMTP_SSL('mauryasamiksha188@gmail.com', 465)
-    server.login(from_addr, password)
-    server.send_message(msg)
-    server.quit()
-
-# Function to get the current date and time
-def get_current_datetime():
-    now = datetime.datetime.now()
-    return now.strftime("%Y-%m-%d %H:%M:%S")
-
-# Function to search Wikipedia
-def search_wikipedia(query):
-    results = wikipedia.search(query)
-    if results:
-        return wikipedia.summary(results[0], sentences=2)
+def categorize_bmi(bmi):
+    if bmi < 18.5:
+        return "Underweight"
+    elif bmi < 25:
+        return "Normal"
     else:
-        return "No results found"
+        return "Overweight"
 
-# Main function
+def save_data(weight, height, bmi, category):
+    with open("bmi_data.csv", "a", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([weight, height, bmi, category])
+
+def visualize_data():
+    bmi_data = []
+    with open("bmi_data.csv", "r") as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            bmi_data.append(float(row[2]))
+
+    plt.plot(bmi_data)
+    plt.xlabel("Entry Number")
+    plt.ylabel("BMI")
+    plt.title("BMI Trend")
+    plt.show()
+
 def main():
-    with sr.Microphone() as source:
-        print("Listening...")
-        audio = r.listen(source)
+    root = tk.Tk()
+    root.title("BMI Calculator")
 
-    try:
-        command = r.recognize_google(audio, language='en-in')
-        print("You said: " + command)
+    # Create input fields
+    weight_label = tk.Label(root, text="Weight (kg):")
+    weight_label.pack()
+    weight_entry = tk.Entry(root)
+    weight_entry.pack()
 
-        if "hello" in command.lower():
-            print("Hello! How can I assist you today?")
-        elif "time" in command.lower():
-            print("Current time: " + get_current_datetime())
-        elif "search" in command.lower():
-            query = command.replace("search", "")
-            print("Results: " + search_wikipedia(query))
-        elif "email" in command.lower():
-            subject = input("Enter the subject: ")
-            message = input("Enter the message: ")
-            from_addr = input("Enter the from address: ")
-            to_addr = input("Enter the to address: ")
-            password = input("Enter the password: ")
-            send_email(subject, message, from_addr, to_addr, password)
-            print("Email sent successfully!")
-        else:
-            print("I didn't understand that. Please try again.")
+    height_label = tk.Label(root, text="Height (m):")
+    height_label.pack()
+    height_entry = tk.Entry(root)
+    height_entry.pack()
 
-    except sr.UnknownValueError:
-        print("Sorry, I didn't catch that. Please try again.")
-    except sr.RequestError as e:
-        print("Error; {0}".format(e))
+    # Create calculate button
+    calculate_button = tk.Button(root, text="Calculate BMI", command=lambda: calculate_bmi_callback())
+    calculate_button.pack()
+
+    # Create result display
+    result_label = tk.Label(root, text="")
+    result_label.pack()
+
+    # Create visualize button
+    visualize_button = tk.Button(root, text="Visualize BMI Trend", command=visualize_data)
+    visualize_button.pack()
+
+    def calculate_bmi_callback():
+        weight = float(weight_entry.get())
+        height = float(height_entry.get())
+
+        if weight <= 0 or height <= 0:
+            messagebox.showerror("Invalid input", "Please enter positive values.")
+            return
+
+        bmi = calculate_bmi(weight, height)
+        category = categorize_bmi(bmi)
+
+        result_label.config(text=f"Your BMI is: {bmi:.2f}\nYour category is: {category}")
+        save_data(weight, height, bmi, category)
+
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
